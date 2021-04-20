@@ -26,7 +26,7 @@
     "MySubnet": {
       "Description": "ID of an existing Subnets",
       "Type": "AWS::EC2::Subnet::Id",
-      "ConstraintDescription": "Must be the ID of an existing VPC."
+      "ConstraintDescription": "Must be the ID of an existing Subnet."
     },
     "SSHLocation" : {
       "Description" : "The IP address range that can be used to SSH to the EC2 instances",
