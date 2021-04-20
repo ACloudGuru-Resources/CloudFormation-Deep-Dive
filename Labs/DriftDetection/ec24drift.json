@@ -19,15 +19,15 @@
       "ConstraintDescription" : "must be a valid EC2 instance type."
     },
     "myVPC": {
-        "Description" : "Learning Activity Provided VPC",
-        "Type"        : "String",
-        "Default"     : "vpc-XXXXXXXX"
+      "Description": "ID of an existing VPC",
+      "Type": "AWS::EC2::VPC::Id",
+      "ConstraintDescription": "Must be the ID of an existing VPC."
     },
     "MySubnet": {
-        "Description" : "Learning Activity Provided subnet",
-        "Type": "String",
-        "Default": "subnet-XXXXXXXX"
-    }, 
+      "Description": "ID of an existing Subnets",
+      "Type": "AWS::EC2::Subnet::Id",
+      "ConstraintDescription": "Must be the ID of an existing VPC."
+    },
     "SSHLocation" : {
       "Description" : "The IP address range that can be used to SSH to the EC2 instances",
       "Type": "String",
