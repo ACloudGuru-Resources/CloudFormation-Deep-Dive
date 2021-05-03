@@ -1,0 +1,165 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  AGC Hands-on Lab: Simple LAMP stack using latest Amazon Linux 2 AMI from
+  parameter store behind a load balancer to allow scaling up/out.
+Parameters:
+  LatestAmiId:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: 'AWS::EC2::KeyPair::KeyName'
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+  InstanceType:
+    Description: WebServer EC2 instance type
+    Default: t3.small
+    Type: String
+    AllowedValues:
+      - t3.nano
+      - t3.micro
+      - t3.small
+      - t3.medium
+  Subnet1:
+    Description: ID of an existing Subnet
+    Type: 'AWS::EC2::Subnet::Id'
+    ConstraintDescription: Must be the ID of an existing Subnet.
+  Subnet2:
+    Description: ID of an DIFFERENT Subnet in another Availability Zone
+    Type: 'AWS::EC2::Subnet::Id'
+    ConstraintDescription: Must be the ID of an existing Subnet.
+  myVPC:
+    Description: ID of an existing VPC
+    Type: 'AWS::EC2::VPC::Id'
+    ConstraintDescription: Must be the ID of an existing VPC.
+Resources:
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Subnets: 
+        - !Ref Subnet1
+        - !Ref Subnet2
+      SecurityGroups:
+        - !Ref WebServerSG
+
+  LoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref DefaultTargetGroup
+
+  DefaultTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      VpcId: !Ref myVPC
+      Port: 80
+      Protocol: HTTP
+      Matcher:
+        HttpCode: '403'
+      Targets:
+        - Id:
+            Ref: WebServerInstance1
+          Port: 80
+        - Id:
+            Ref: WebServerInstance2
+          Port: 80
+  WebServerSG:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Security Group for LAMP Stack Resources
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: '-1'
+      VpcId: !Ref myVPC
+  SSHIngress:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      CidrIp: 0.0.0.0/0
+      GroupId: !GetAtt 
+        - WebServerSG
+        - GroupId
+      IpProtocol: tcp
+      FromPort: '22'
+      ToPort: '22'
+  WebIngress:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      CidrIp: 0.0.0.0/0
+      GroupId: !GetAtt 
+        - WebServerSG
+        - GroupId
+      IpProtocol: tcp
+      FromPort: '80'
+      ToPort: '80'
+  WebServerInstance1:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: !Ref LatestAmiId
+      InstanceType: !Ref InstanceType
+      SubnetId: !Ref Subnet1
+      SecurityGroupIds:
+        - !Ref WebServerSG
+      KeyName: !Ref KeyName
+      UserData: !Base64 
+        'Fn::Join':
+          - ''
+          - - |
+              #!/bin/bash
+            - |
+              #yum update -y 
+            - |
+              # Install the files and packages from the metadata
+            - |
+              amazon-linux-extras install -y lamp-mariadb10.2-php7.2 php7.2
+            - |
+              yum install -y httpd mariadb-server
+            - |
+              systemctl start httpd
+            - |
+              systemctl enable httpd
+            - |
+              systemctl is-enabled httpd
+            - |
+              echo "<?php phpinfo(); ?>" > /var/www/html/phpinfo.php
+  WebServerInstance2:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: !Ref LatestAmiId
+      InstanceType: !Ref InstanceType
+      SubnetId: !Ref Subnet2
+      SecurityGroupIds:
+        - !Ref WebServerSG
+      KeyName: !Ref KeyName
+      UserData: !Base64 
+        'Fn::Join':
+          - ''
+          - - |
+              #!/bin/bash
+            - |
+              #yum update -y 
+            - |
+              # Install the files and packages from the metadata
+            - |
+              amazon-linux-extras install -y lamp-mariadb10.2-php7.2 php7.2
+            - |
+              yum install -y httpd mariadb-server
+            - |
+              systemctl start httpd
+            - |
+              systemctl enable httpd
+            - |
+              systemctl is-enabled httpd
+            - |
+              echo "<?php phpinfo(); ?>" > /var/www/html/phpinfo.php
+Outputs:
+  WebsiteURL:
+    Description: URL for newly created LAMP stack
+    Value: !Join 
+      - ''
+      - - 'http://'
+        - !GetAtt 
+          - LoadBalancer
+          - DNSName
