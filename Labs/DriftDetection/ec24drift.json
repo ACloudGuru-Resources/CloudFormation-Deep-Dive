@@ -179,7 +179,12 @@
     "S3Bucket" : {
         "Type" : "AWS::S3::Bucket",
         "Properties" : {
-          "AccessControl" : "PublicRead",
+          "PublicAccessBlockConfiguration": {
+            "BlockPublicAcls": "False",
+            "BlockPublicPolicy": "False",
+            "IgnorePublicAcls": "False",
+			      "RestrictPublicBuckets": "False"
+           },
           "WebsiteConfiguration" : {
             "IndexDocument" : "index.html",
             "ErrorDocument" : "error.html"
